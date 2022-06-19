@@ -11,31 +11,76 @@
         justify-content: center;
         align-items: center;
       }
+
+      #game {
+        display: flex;
+        flex-flow: column;
+      }
+      button {
+        height: 50px;
+        width: 100%;
+      }
     </style>
   </head>
   <body>
-    <canvas
-      id="canvas"
-      style="border: 1px solid #222"
-      width="300"
-      height="400"
-    ></canvas>
+    <div id="game">
+      <canvas
+        id="canvas"
+        style="border: 1px solid #222"
+        width="300"
+        height="200"
+      ></canvas>
+      <button id="start" onclick="startGame()">Start Game</button>
+      <button id="reset" style="display: none" onclick="resetGame()">
+        Reset Game
+      </button>
+    </div>
 
     <script>
       const canvas = document.getElementById("canvas");
+      const start = document.getElementById("start");
+      const reset = document.getElementById("reset");
+
       const ctx = canvas.getContext("2d");
-      const GRID_WIDTH = 500;
-      const GRID_HEIGHT = 400;
-      let APPLE_X = Math.ceil(Math.random() * 500);
-      let APPLE_Y = Math.ceil(Math.random() * 400);
+      const GRID_WIDTH = parseInt(canvas.attributes.width.value);
+      const GRID_HEIGHT = parseInt(canvas.attributes.height.value);
+      const SNAKE_SPEED = 3;
+      const SNAKE_SIZE = 10;
+      const colors = [
+        "blue",
+        "yellow",
+        "green",
+        "red",
+        "purple",
+        "orange",
+        "pink",
+      ];
+      let APPLE_X = Math.floor(Math.random() * GRID_WIDTH);
+      let APPLE_Y = Math.floor(Math.random() * GRID_HEIGHT);
       let SNAKE_X = 0;
       let SNAKE_Y = 0;
-      let direction = "";
+      let direction = "right";
       let eaten = false;
+      let appleColor = "red";
+      let snakeColor = "green";
+      let snakeBody = [];
+      let gameOver = false;
+      let animationFrameId = 0;
+
+      if (!gameOver) {
+        start.display;
+      }
+
+      const showStartOrReset = () => {};
 
       const createSnake = () => {
-        ctx.fillStyle = "green";
-        ctx.fillRect(SNAKE_X, SNAKE_Y, 10, 10);
+        const head = { x: SNAKE_X, y: SNAKE_Y, color: snakeColor };
+        snakeBody = [head, ...snakeBody];
+
+        snakeBody.map((x) => {
+          ctx.fillStyle = x.color;
+          ctx.fillRect(x.x, x.y, SNAKE_SIZE, SNAKE_SIZE);
+        });
       };
 
       const checkToSeeIfSnakeAteTheApple = () => {
@@ -46,30 +91,70 @@
           SNAKE_Y + 10 >= APPLE_Y
         ) {
           eaten = true;
+          snakeColor = appleColor;
+          [...snakeBody, { x: SNAKE_X, y: SNAKE_Y }];
+        } else {
+          snakeBody.pop();
         }
       };
 
       const createApple = () => {
         if (eaten) {
-          let APPLE_X = Math.ceil(Math.random() * 500);
-          let APPLE_Y = Math.ceil(Math.random() * 400);
+          const ranNum = Math.floor(Math.random() * 7);
+          APPLE_X = Math.floor(Math.random() * GRID_WIDTH);
+          APPLE_Y = Math.floor(Math.random() * GRID_HEIGHT);
+          console.log(APPLE_X, APPLE_Y);
+
+          if (APPLE_X > 490) {
+            APPLE_X -= SNAKE_SIZE;
+          }
+          if (APPLE_Y > 490) {
+            APPLE_Y -= SNAKE_SIZE;
+          }
+          appleColor = colors[ranNum];
 
           eaten = false;
         } else {
-          ctx.fillStyle = "red";
+          ctx.fillStyle = appleColor;
           ctx.fillRect(APPLE_X, APPLE_Y, 10, 10);
         }
       };
 
       const moveSnake = (direction) => {
         if (direction === "left") {
-          SNAKE_X -= 2;
+          SNAKE_X -= SNAKE_SPEED;
         } else if (direction === "up") {
-          SNAKE_Y -= 2;
+          SNAKE_Y -= SNAKE_SPEED;
         } else if (direction === "right") {
-          SNAKE_X += 2;
+          SNAKE_X += SNAKE_SPEED;
         } else if (direction === "down") {
-          SNAKE_Y += 2;
+          SNAKE_Y += SNAKE_SPEED;
+        }
+      };
+
+      const checkForCollisionOfSelf = () => {
+        const head = snakeBody[0];
+        snakeBody.map((body, index) => {
+          if (index === 0) return;
+          if (
+            head.x <= body.x &&
+            head.x >= body.x &&
+            head.y <= body.y &&
+            head.y >= body.y
+          ) {
+            gameOver = true;
+          }
+        });
+      };
+
+      const checkOutOfBounds = () => {
+        if (
+          SNAKE_X > GRID_WIDTH - 9 ||
+          SNAKE_X < 0 ||
+          SNAKE_Y < 0 ||
+          SNAKE_Y > GRID_HEIGHT - 9
+        ) {
+          gameOver = true;
         }
       };
 
@@ -95,17 +180,41 @@
         }
       };
 
+      const resetGame = () => {
+        if (gameOver) {
+          gameOver = false;
+          SNAKE_X = 0;
+          SNAKE_Y = 0;
+          snakeBody = [];
+          direction = "right";
+          cancelAnimationFrame(animationFrameId);
+          game();
+        }
+      };
+
+      const startGame = () => {
+        game();
+        start.style.display = "none";
+      };
+
       const game = () => {
         clearGameboard();
         createSnake();
-        checkToSeeIfSnakeAteTheApple();
         createApple();
         moveSnake(direction);
-
-        requestAnimationFrame(game);
+        checkOutOfBounds();
+        checkForCollisionOfSelf();
+        checkToSeeIfSnakeAteTheApple();
+        if (!gameOver) {
+          if (reset.style.display === "block") {
+            reset.style.display = "none";
+          }
+          aniamtionFrameId = requestAnimationFrame(game);
+        } else {
+          reset.style.display = "block";
+          cancelAnimationFrame(animationFrameId);
+        }
       };
-
-      game();
 
       document.addEventListener("keydown", (e) => controls(e));
     </script>
